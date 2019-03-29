@@ -6,6 +6,7 @@ package wasm
 
 import (
 	"bytes"
+	"cmd/internal/obj"
 	"cmd/internal/objabi"
 	"cmd/link/internal/ld"
 	"cmd/link/internal/sym"
@@ -42,9 +43,10 @@ func gentext(ctxt *ld.Link) {
 }
 
 type wasmFunc struct {
-	Name string
-	Type uint32
-	Code []byte
+	Module string
+	Name   string
+	Type   uint32
+	Code   []byte
 }
 
 type wasmFuncType struct {
@@ -105,22 +107,19 @@ func asmb2(ctxt *ld.Link) {
 	}
 
 	// collect host imports (functions that get imported from the WebAssembly host, usually JavaScript)
-	hostImports := []*wasmFunc{
-		{
-			Name: "debug",
-			Type: lookupType(&wasmFuncType{Params: []byte{I32}}, &types),
-		},
-	}
-	hostImportMap := make(map[*sym.Symbol]int64)
+	var hostImports []*wasmFunc
 	for _, fn := range ctxt.Textp {
-		for _, r := range fn.R {
-			if r.Type == objabi.R_WASMIMPORT {
-				hostImportMap[r.Sym] = int64(len(hostImports))
-				hostImports = append(hostImports, &wasmFunc{
-					Name: r.Sym.Name,
-					Type: lookupType(&wasmFuncType{Params: []byte{I32}}, &types),
-				})
-			}
+		if fn.FuncInfo != nil && fn.FuncInfo.WasmImport != nil {
+			wi := fn.FuncInfo.WasmImport
+			fn.Value = int64(len(hostImports))
+			hostImports = append(hostImports, &wasmFunc{
+				Module: wi.Module,
+				Name:   wi.Name,
+				Type: lookupType(&wasmFuncType{
+					Params:  fieldsToTypes(wi.Params),
+					Results: fieldsToTypes(wi.Results),
+				}, &types),
+			})
 		}
 	}
 
@@ -129,11 +128,15 @@ func asmb2(ctxt *ld.Link) {
 	fns := make([]*wasmFunc, len(ctxt.Textp))
 	for i, fn := range ctxt.Textp {
 		wfn := new(bytes.Buffer)
-		if fn.Name == "go.buildid" {
+		if fn.Name == "go.buildid" || fn.FuncInfo.WasmImport != nil {
+			if fn.Name == "go.buildid" {
+				buildid = fn.P
+			}
+			// dummy function
 			writeUleb128(wfn, 0) // number of sets of locals
 			writeI32Const(wfn, 0)
 			wfn.WriteByte(0x0b) // end
-			buildid = fn.P
+
 		} else {
 			// Relocations have variable length, handle them here.
 			off := int32(0)
@@ -144,9 +147,11 @@ func asmb2(ctxt *ld.Link) {
 				case objabi.R_ADDR:
 					writeSleb128(wfn, r.Sym.Value+r.Add)
 				case objabi.R_CALL:
+					if r.Sym.FuncInfo.WasmImport != nil {
+						writeSleb128(wfn, r.Sym.Value)
+						continue
+					}
 					writeSleb128(wfn, int64(len(hostImports))+r.Sym.Value>>16-funcValueOffset)
-				case objabi.R_WASMIMPORT:
-					writeSleb128(wfn, hostImportMap[r.Sym])
 				default:
 					ld.Errorf(fn, "bad reloc type %d (%s)", r.Type, sym.RelocName(ctxt.Arch, r.Type))
 					continue
@@ -250,7 +255,7 @@ func writeImportSec(ctxt *ld.Link, hostImports []*wasmFunc) {
 
 	writeUleb128(ctxt.Out, uint64(len(hostImports))) // number of imports
 	for _, fn := range hostImports {
-		writeName(ctxt.Out, "go") // provided by the import object in wasm_exec.js
+		writeName(ctxt.Out, fn.Module)
 		writeName(ctxt.Out, fn.Name)
 		ctxt.Out.WriteByte(0x00) // func import
 		writeUleb128(ctxt.Out, uint64(fn.Type))
@@ -580,4 +585,21 @@ func writeSleb128(w io.ByteWriter, v int64) {
 		}
 		w.WriteByte(c)
 	}
+}
+
+func fieldsToTypes(fields []obj.WasmField) []byte {
+	b := make([]byte, len(fields))
+	for i, f := range fields {
+		switch f.Type {
+		case obj.WasmI32, obj.WasmPtr:
+			b[i] = I32
+		case obj.WasmI64:
+			b[i] = I64
+		case obj.WasmF32:
+			b[i] = F32
+		case obj.WasmF64:
+			b[i] = F64
+		}
+	}
+	return b
 }

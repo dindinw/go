@@ -209,6 +209,27 @@ func funccompile(fn *Node) {
 	// assign parameter offsets
 	dowidth(fn.Type)
 
+	if fn.Func.wasmimport != nil {
+		lineno = fn.Pos
+		if fn.Nbody.Len() != 0 {
+			Fatalf("wasm import can not have a function body")
+		}
+
+		lsym := fn.Func.Nname.Sym.Linksym()
+		lsym.Type = objabi.STEXT
+		lsym.Func = &obj.FuncInfo{
+			WasmImport: &obj.WasmImport{
+				Module:  fn.Func.wasmimport.module,
+				Name:    fn.Func.wasmimport.name,
+				Params:  toWasmFields(fn.Type.Params().FieldSlice()),
+				Results: toWasmFields(fn.Type.Results().FieldSlice()),
+			},
+		}
+		Ctxt.Data = append(Ctxt.Data, lsym)
+
+		return
+	}
+
 	if fn.Nbody.Len() == 0 {
 		// Initialize ABI wrappers if necessary.
 		fn.Func.initLSym(false)
@@ -768,3 +789,26 @@ type symByName []*types.Sym
 func (a symByName) Len() int           { return len(a) }
 func (a symByName) Less(i, j int) bool { return a[i].Name < a[j].Name }
 func (a symByName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+
+func toWasmFields(fields []*types.Field) []obj.WasmField {
+	wfs := make([]obj.WasmField, len(fields))
+	for i, f := range fields {
+		t := f.Type
+		switch {
+		case t.IsInteger() && t.Width == 4:
+			wfs[i].Type = obj.WasmI32
+		case t.IsInteger() && t.Width == 8:
+			wfs[i].Type = obj.WasmI64
+		case t.IsFloat() && t.Width == 4:
+			wfs[i].Type = obj.WasmF32
+		case t.IsFloat() && t.Width == 8:
+			wfs[i].Type = obj.WasmF64
+		case t.IsPtr():
+			wfs[i].Type = obj.WasmPtr
+		default:
+			Fatalf("wasm import has bad function signature")
+		}
+		wfs[i].Offset = f.Offset
+	}
+	return wfs
+}

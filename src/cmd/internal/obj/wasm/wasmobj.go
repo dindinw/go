@@ -100,7 +100,6 @@ var unaryDst = map[obj.As]bool{
 	ATee:          true,
 	ACall:         true,
 	ACallIndirect: true,
-	ACallImport:   true,
 	ABr:           true,
 	ABrIf:         true,
 	ABrTable:      true,
@@ -132,11 +131,6 @@ var (
 	sigpanic0       *obj.LSym
 	deferreturn     *obj.LSym
 	jmpdefer        *obj.LSym
-)
-
-const (
-	/* mark flags */
-	WasmImport = 1 << 0
 )
 
 func instinit(ctxt *obj.Link) {
@@ -422,6 +416,54 @@ func preprocess(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 			call := *p
 			p.As = obj.ANOP
 
+			if call.To.Type == obj.TYPE_MEM && call.To.Sym.Func != nil && call.To.Sym.Func.WasmImport != nil {
+				wi := call.To.Sym.Func.WasmImport
+				if len(wi.Results) == 1 {
+					p = appendp(p, AGet, regAddr(REG_SP)) // address has to be before the value
+				}
+				if len(wi.Results) > 1 {
+					panic("invalid results type") // impossible until multi-value proposal has landed
+				}
+				for _, f := range wi.Params {
+					p = appendp(p, AGet, regAddr(REG_SP))
+					switch f.Type {
+					case obj.WasmI32:
+						p = appendp(p, AI32Load, constAddr(f.Offset))
+					case obj.WasmI64:
+						p = appendp(p, AI64Load, constAddr(f.Offset))
+					case obj.WasmF32:
+						p = appendp(p, AF32Load, constAddr(f.Offset))
+					case obj.WasmF64:
+						p = appendp(p, AF64Load, constAddr(f.Offset))
+					case obj.WasmPtr:
+						p = appendp(p, AI64Load, constAddr(f.Offset))
+						p = appendp(p, AI32WrapI64)
+					default:
+						panic("bad param type")
+					}
+				}
+				p = appendp(p, ACall, call.To)
+				if len(wi.Results) == 1 {
+					f := wi.Results[0]
+					switch f.Type {
+					case obj.WasmI32:
+						p = appendp(p, AI32Store, constAddr(f.Offset))
+					case obj.WasmI64:
+						p = appendp(p, AI64Store, constAddr(f.Offset))
+					case obj.WasmF32:
+						p = appendp(p, AF32Store, constAddr(f.Offset))
+					case obj.WasmF64:
+						p = appendp(p, AF64Store, constAddr(f.Offset))
+					case obj.WasmPtr:
+						p = appendp(p, AI64ExtendI32U)
+						p = appendp(p, AI64Store, constAddr(f.Offset))
+					default:
+						panic("bad result type")
+					}
+				}
+				break
+			}
+
 			pcAfterCall := call.Link.Pc
 			if call.To.Sym == sigpanic {
 				pcAfterCall-- // sigpanic expects to be called without advancing the pc
@@ -702,12 +744,6 @@ func preprocess(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 			default:
 				panic("bad MOV type")
 			}
-
-		case ACallImport:
-			p.As = obj.ANOP
-			p = appendp(p, AGet, regAddr(REG_SP))
-			p = appendp(p, ACall, obj.Addr{Type: obj.TYPE_MEM, Name: obj.NAME_EXTERN, Sym: s})
-			p.Mark = WasmImport
 		}
 	}
 
@@ -1009,9 +1045,6 @@ func assemble(ctxt *obj.Link, s *obj.LSym, newprog obj.ProgAlloc) {
 				r := obj.Addrel(s)
 				r.Off = int32(w.Len())
 				r.Type = objabi.R_CALL
-				if p.Mark&WasmImport != 0 {
-					r.Type = objabi.R_WASMIMPORT
-				}
 				r.Sym = p.To.Sym
 				if hasLocalSP {
 					// The stack may have moved, which changes SP. Update the local SP variable.

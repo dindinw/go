@@ -416,7 +416,33 @@ type FuncInfo struct {
 	OpenCodedDeferInfo *LSym
 
 	FuncInfoSym *LSym
+
+	WasmImport *WasmImport
 }
+
+// WasmImport contains extra fields for wasm import functions.
+type WasmImport struct {
+	Module  string
+	Name    string
+	Params  []WasmField
+	Results []WasmField
+}
+
+// WasmField describes a parameter or result of a wasm import function.
+type WasmField struct {
+	Type   WasmFieldType
+	Offset int64
+}
+
+type WasmFieldType byte
+
+const (
+	WasmI32 WasmFieldType = iota
+	WasmI64
+	WasmF32
+	WasmF64
+	WasmPtr
+)
 
 type InlMark struct {
 	// When unwinding from an instruction in an inlined body, mark

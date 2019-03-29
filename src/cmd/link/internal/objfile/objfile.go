@@ -388,6 +388,23 @@ overwrite:
 				r.lib.DupTextSyms = append(r.lib.DupTextSyms, dup)
 			}
 		}
+
+		if flags&(1<<5) != 0 {
+			wi := &obj.WasmImport{}
+			pc.WasmImport = wi
+			wi.Module = r.readString()
+			wi.Name = r.readString()
+			wi.Params = make([]obj.WasmField, r.readInt64())
+			for i := range wi.Params {
+				wi.Params[i].Type = obj.WasmFieldType(r.readUint8())
+				wi.Params[i].Offset = r.readInt64()
+			}
+			wi.Results = make([]obj.WasmField, r.readInt64())
+			for i := range wi.Results {
+				wi.Results[i].Type = obj.WasmFieldType(r.readUint8())
+				wi.Results[i].Offset = r.readInt64()
+			}
+		}
 	}
 	if s.Type == sym.SDWARFINFO {
 		r.patchDWARFName(s)

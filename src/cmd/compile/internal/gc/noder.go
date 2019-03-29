@@ -130,11 +130,12 @@ type noder struct {
 		base *src.PosBase
 	}
 
-	file       *syntax.File
-	linknames  []linkname
-	pragcgobuf [][]string
-	err        chan syntax.Error
-	scope      ScopeID
+	file        *syntax.File
+	linknames   []linkname
+	wasmimports []*wasmimport
+	pragcgobuf  [][]string
+	err         chan syntax.Error
+	scope       ScopeID
 
 	// scopeVars is a stack tracking the number of variables declared in the
 	// current function at the moment each open scope was opened.
@@ -499,6 +500,16 @@ func (p *noder) funcDecl(fun *syntax.FuncDecl) *Node {
 		yyerrorl(f.Pos, "go:nosplit and go:systemstack cannot be combined")
 	}
 
+	isWasmImport := false
+	for _, wi := range p.wasmimports {
+		if f.funcname() == wi.local {
+			f.Func.wasmimport = wi
+			f.SetNoescape(true)
+			isWasmImport = true
+			break
+		}
+	}
+
 	if fun.Recv == nil {
 		declare(f.Func.Nname, PFUNC)
 	}
@@ -520,7 +531,7 @@ func (p *noder) funcDecl(fun *syntax.FuncDecl) *Node {
 					break
 				}
 			}
-			if !isLinknamed {
+			if !isLinknamed && !isWasmImport {
 				yyerrorl(f.Pos, "missing function body")
 			}
 		}
@@ -1502,6 +1513,14 @@ func (p *noder) pragma(pos syntax.Pos, text string) syntax.Pragma {
 			target = f[2]
 		}
 		p.linknames = append(p.linknames, linkname{pos, f[1], target})
+
+	case strings.HasPrefix(text, "go:wasmimport "):
+		f := strings.Fields(text)
+		if len(f) != 4 {
+			p.error(syntax.Error{Pos: pos, Msg: "usage: //go:wasmimport localname importmodule importname"})
+			break
+		}
+		p.wasmimports = append(p.wasmimports, &wasmimport{local: f[1], module: f[2], name: f[3]})
 
 	case strings.HasPrefix(text, "go:cgo_import_dynamic "):
 		// This is permitted for general use because Solaris

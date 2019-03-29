@@ -534,6 +534,8 @@ type Func struct {
 	// function for go:nowritebarrierrec analysis. Only filled in
 	// if nowritebarrierrecCheck != nil.
 	nwbrCalls *[]nowritebarrierrecCallSym
+
+	wasmimport *wasmimport
 }
 
 // An Inline holds fields used for function bodies that can be inlined.
@@ -557,6 +559,12 @@ type Mark struct {
 
 // A ScopeID represents a lexical scope within a function.
 type ScopeID int32
+
+type wasmimport struct {
+	local  string
+	module string
+	name   string
+}
 
 const (
 	funcDupok         = 1 << iota // duplicate definitions ok

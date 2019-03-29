@@ -527,6 +527,8 @@ type FuncInfo struct {
 	Funcdataoff []int64
 	File        []*Symbol
 	InlTree     []InlinedCall
+
+	WasmImport *obj.WasmImport
 }
 
 // InlinedCall is a node in a local inlining tree (FuncInfo.InlTree).
