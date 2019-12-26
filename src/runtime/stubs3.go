@@ -7,6 +7,8 @@
 // +build !freebsd
 // +build !darwin
 // +build !aix
+// +build !js
+// +build !wasi
 
 package runtime
 

@@ -1102,8 +1102,8 @@ func checkMode(t *testing.T, path string, mode FileMode) {
 
 func TestChmod(t *testing.T) {
 	// Chmod is not supported under windows.
-	if runtime.GOOS == "windows" {
-		return
+	if runtime.GOOS == "windows" || runtime.GOOS == "wasi" {
+		t.Skip("Chmod is not supported on " + runtime.GOOS)
 	}
 	f := newFile("TestChmod", t)
 	defer Remove(f.Name())
@@ -1925,6 +1925,10 @@ func TestLargeWriteToConsole(t *testing.T) {
 }
 
 func TestStatDirModeExec(t *testing.T) {
+	if runtime.GOOS == "wasi" {
+		t.Skip("Chmod is not supported on " + runtime.GOOS)
+	}
+
 	const mode = 0111
 
 	path, err := ioutil.TempDir("", "go-build")
@@ -2120,9 +2124,11 @@ func TestLongPath(t *testing.T) {
 					if dir.Size() != filesize || filesize != wantSize {
 						t.Errorf("Size(%q) is %d, len(ReadFile()) is %d, want %d", path, dir.Size(), filesize, wantSize)
 					}
-					err = Chmod(path, dir.Mode())
-					if err != nil {
-						t.Fatalf("Chmod(%q) failed: %v", path, err)
+					if runtime.GOOS != "wasi" { // Chmod is not supported on wasi
+						err = Chmod(path, dir.Mode())
+						if err != nil {
+							t.Fatalf("Chmod(%q) failed: %v", path, err)
+						}
 					}
 				}
 				if err := Truncate(sizedTempDir+"/bar.txt", 0); err != nil {

@@ -504,7 +504,7 @@ func (p *noder) funcDecl(fun *syntax.FuncDecl) *Node {
 	for _, wi := range p.wasmimports {
 		if f.funcname() == wi.local {
 			f.Func.wasmimport = wi
-			f.SetNoescape(true)
+			f.Func.Pragma |= Noescape
 			isWasmImport = true
 			break
 		}

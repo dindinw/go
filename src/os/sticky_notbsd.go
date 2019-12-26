@@ -10,6 +10,7 @@
 // +build !netbsd
 // +build !openbsd
 // +build !solaris
+// +build !wasi
 
 package os
 

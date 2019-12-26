@@ -24,8 +24,6 @@ func wasmDiv()
 func wasmTruncS()
 func wasmTruncU()
 
-func wasmExit(code int32)
-
 // adjust Gobuf as it if executed a call to fn with context ctxt
 // and then did an immediate gosave.
 func gostartcall(buf *gobuf, fn, ctxt unsafe.Pointer) {

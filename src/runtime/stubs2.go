@@ -6,6 +6,7 @@
 // +build !solaris
 // +build !windows
 // +build !js
+// +build !wasi
 // +build !darwin
 // +build !aix
 

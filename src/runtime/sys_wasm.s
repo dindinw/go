@@ -168,35 +168,3 @@ TEXT runtime·growMemory(SB), NOSPLIT, $0
 	GrowMemory
 	I32Store ret+8(FP)
 	RET
-
-TEXT ·resetMemoryDataView(SB), NOSPLIT, $0
-	CallImport
-	RET
-
-TEXT ·wasmExit(SB), NOSPLIT, $0
-	CallImport
-	RET
-
-TEXT ·wasmWrite(SB), NOSPLIT, $0
-	CallImport
-	RET
-
-TEXT ·nanotime1(SB), NOSPLIT, $0
-	CallImport
-	RET
-
-TEXT ·walltime1(SB), NOSPLIT, $0
-	CallImport
-	RET
-
-TEXT ·scheduleTimeoutEvent(SB), NOSPLIT, $0
-	CallImport
-	RET
-
-TEXT ·clearTimeoutEvent(SB), NOSPLIT, $0
-	CallImport
-	RET
-
-TEXT ·getRandomData(SB), NOSPLIT, $0
-	CallImport
-	RET

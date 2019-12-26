@@ -55,7 +55,8 @@ type wasmFuncType struct {
 }
 
 var wasmFuncTypes = map[string]*wasmFuncType{
-	"_rt0_wasm_js":           {Params: []byte{}},                                         //
+	"_rt0_wasm_wasi":         {Params: []byte{}},                                         //
+	"wasm_export__start":     {},                                                         //
 	"wasm_export_run":        {Params: []byte{I32, I32}},                                 // argc, argv
 	"wasm_export_resume":     {Params: []byte{}},                                         //
 	"wasm_export_getsp":      {Results: []byte{I32}},                                     // sp
@@ -348,18 +349,16 @@ func writeGlobalSec(ctxt *ld.Link) {
 func writeExportSec(ctxt *ld.Link, lenHostImports int) {
 	sizeOffset := writeSecHeader(ctxt, sectionExport)
 
-	writeUleb128(ctxt.Out, 4) // number of exports
+	writeUleb128(ctxt.Out, 2) // number of exports
 
-	for _, name := range []string{"run", "resume", "getsp"} {
-		idx := uint32(lenHostImports) + uint32(ctxt.Syms.ROLookup("wasm_export_"+name, 0).Value>>16) - funcValueOffset
-		writeName(ctxt.Out, name)           // inst.exports.run/resume/getsp in wasm_exec.js
-		ctxt.Out.WriteByte(0x00)            // func export
-		writeUleb128(ctxt.Out, uint64(idx)) // funcidx
-	}
+	idx := uint32(lenHostImports) + uint32(ctxt.Syms.ROLookup("_rt0_wasm_wasi", 0).Value>>16) - funcValueOffset
+	writeName(ctxt.Out, "_start")       // inst.exports.run/resume/getsp in wasm_exec.js
+	ctxt.Out.WriteByte(0x00)            // func export
+	writeUleb128(ctxt.Out, uint64(idx)) // funcidx
 
-	writeName(ctxt.Out, "mem") // inst.exports.mem in wasm_exec.js
-	ctxt.Out.WriteByte(0x02)   // mem export
-	writeUleb128(ctxt.Out, 0)  // memidx
+	writeName(ctxt.Out, "memory") // inst.exports.mem in wasm_exec.js
+	ctxt.Out.WriteByte(0x02)      // mem export
+	writeUleb128(ctxt.Out, 0)     // memidx
 
 	writeSecSize(ctxt, sizeOffset)
 }

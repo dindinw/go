@@ -15,7 +15,6 @@ TEXT runtime·rt0_go(SB), NOSPLIT|NOFRAME, $0
 	// set g to g0
 	MOVD $runtime·g0(SB), g
 	CALLNORESUME runtime·check(SB)
-	CALLNORESUME runtime·args(SB)
 	CALLNORESUME runtime·osinit(SB)
 	CALLNORESUME runtime·schedinit(SB)
 	MOVD $0, 0(SP)
