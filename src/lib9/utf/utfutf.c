@@ -13,18 +13,19 @@
  */
 #include <stdarg.h>
 #include <string.h>
-#include "plan9.h"
 #include "utf.h"
+#include "utfdef.h"
 
 
 /*
  * Return pointer to first occurrence of s2 in s1,
  * 0 if none
  */
+const
 char*
-utfutf(char *s1, char *s2)
+utfutf(const char *s1, const char *s2)
 {
-	char *p;
+	const char *p;
 	long f, n1, n2;
 	Rune r;
 

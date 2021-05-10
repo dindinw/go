@@ -177,7 +177,7 @@ asmb(void)
 		break;
 	case 6:
 		v = HEADR+textsize;
-		myseek(cout, v);
+		seek(cout, v, 0);
 		v = rnd(v, 4096) - v;
 		while(v > 0) {
 			cput(0);
@@ -188,7 +188,7 @@ asmb(void)
 
 	case 7:
 		v = rnd(HEADR+textsize, INITRND);
-		myseek(cout, v);
+		seek(cout, v, 0);
 		break;
 	}
 

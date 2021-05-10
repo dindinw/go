@@ -4,11 +4,11 @@
 
 set -ex
 
-$HOME/bin/6a rt0_amd64_darwin.s
+../../bin/6a rt0_amd64_darwin.s
 mv rt0_amd64_darwin.6 ../../lib/rt0_amd64_darwin.6
 
-$HOME/bin/6a rt0_amd64_linux.s
+../../bin/6a rt0_amd64_linux.s
 mv rt0_amd64_linux.6 ../../lib/rt0_amd64_linux.6
 
-$HOME/bin/6c runtime.c
+../../bin/6c runtime.c
 mv runtime.6 ../../lib/rt_amd64.6

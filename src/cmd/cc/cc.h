@@ -562,8 +562,8 @@ int	mpatov(char*, vlong*);
 /*
  *	lex.c
  */
-void*	allocn(void*, long, long);
-void*	alloc(long);
+void*	allocn(void*, int32, int32);
+void*	alloc(int32);
 void	cinit(void);
 int	compile(char*, char**, int);
 void	errorexit(void);
@@ -793,3 +793,12 @@ int	machcap(Node*);
 #pragma	varargck	type	"O"	int
 #pragma	varargck	type	"T"	Type*
 #pragma	varargck	type	"|"	int
+
+enum
+{
+	Plan9	= 1<<0,
+	Unix	= 1<<1,
+	Windows	= 1<<2,
+};
+int	pathchar(void);
+int	systemtype(int);

@@ -43,5 +43,5 @@ typedef long long		vlong;
 #define	nil	0
 
 #undef	nelem
-#define	nelem	((void*)0)
+#define nelem(x) (sizeof(x)/sizeof((x)[0]))
 
