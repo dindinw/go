@@ -729,6 +729,7 @@ loop:
 	case 'r': return '\r';
 	case 't': return '\t';
 	case 'v': return '\v';
+	case '\\': return '\\'; //https://github.com/golang/go/commit/609cf0c3a77c847ee54a7042f775a7faa67c4eab
 
 	default:
 		warn("unknown escape sequence: %c", c);
